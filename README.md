@@ -56,6 +56,13 @@
             Contains the chapters, scenes, backgrounds, dialogue of each book in the application.
 
             Features: Library catalog for each book, vocabulary bank, dialogue for each level (beginner, intermediate, advanced), character sprites.
+
+    > App.tsx
+        Utilizes the components from GameReader.tsx, GameMenu.tsx, ReadingLevelSElector.tsx, Library.tsx, and ChapterSelect.tsx.
+        
+        Features: functions to handle the book, level, and chapter selected. Functions to handle how these components interact with each other.
+
+    > API.ts
         
             
 
