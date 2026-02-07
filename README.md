@@ -4,20 +4,21 @@
 #Outline
 
     > The application requires npm run dev to run.
+    
     > Components folder
+    
         > GameReader.tsx
+            The primary game engine and most complex component. It manages the actual reading experience.
+            
+            Responsibilities:
+            
+            Fetches scene data (dialogue, narration) via API.
+            
+            Renders the visual novel interface (backgrounds, character speakers, dialogue text).
+            
+            Manages the "Game Loop": advancing text, handling choices, and tracking history.
         
-        The primary game engine and most complex component. It manages the actual reading experience.
-        
-        Responsibilities:
-        
-        Fetches scene data (dialogue, narration) via API.
-        
-        Renders the visual novel interface (backgrounds, character speakers, dialogue text).
-        
-        Manages the "Game Loop": advancing text, handling choices, and tracking history.
-        
-        Features: Includes a Heads-Up Display (HUD) for points/achievements, a vocabulary helper for "Beginner" levels, and integration with the ChatLog for dialogue history.
+            Features: Includes a Heads-Up Display (HUD) for points/achievements, a vocabulary helper for "Beginner" levels, and integration with the ChatLog for dialogue history.
     
         > InteractiveChoice.tsx
           Renders branching decision points within the story.
@@ -26,7 +27,7 @@
           
           Features: Displays options (A, B, C...), handles point scoring, and provides immediate feedback text upon selection.
     
-        >
+        > 
 
 
 
