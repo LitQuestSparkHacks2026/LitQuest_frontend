@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { ChevronRight, Sparkles, Award, Volume2, VolumeX, Menu as MenuIcon, BookMarked } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronRight, Sparkles, Award, Menu as MenuIcon, BookMarked } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ReadingLevel } from '../App';
 import { InteractiveChoice } from './InteractiveChoice';
 import { AchievementNotification } from './AchievementNotification';
-import { VocabularyTooltip } from './VocabularyTooltip';
 import { fahrenheit451 } from '../data/bookData';
+import { fetchScene } from '../api';
 
 interface GameReaderProps {
   currentChapter: number;
@@ -15,148 +15,207 @@ interface GameReaderProps {
   onOpenMenu: () => void;
 }
 
-// Create vocabulary bank from data
+/**
+ * Hackathon-simple mapping:
+ * chapter index -> Mongo scene_id
+ * Update these strings to match what you inserted into Mongo.
+ */
+const CHAPTER_TO_SCENE_ID: Record<number, string> = {
+  0: '01-sidewalk-complete',
+  1: "04-OldWomanHouse-complete",
+};
+
+// Create vocabulary bank from local data (keep this feature working)
 const vocabularyBank: { [key: string]: { definition: string; simplified: string } } = {};
-fahrenheit451.vocabulary.forEach(entry => {
-  vocabularyBank[entry.word] = {
+fahrenheit451.vocabulary.forEach((entry) => {
+  vocabularyBank[String(entry.word).toLowerCase()] = {
     definition: entry.definition,
-    simplified: entry.simplified
+    simplified: entry.simplified,
   };
 });
 
-export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readingLevel, onOpenMenu }: GameReaderProps) {
-  const [currentScene, setCurrentScene] = useState(0);
-  const [currentDialogue, setCurrentDialogue] = useState(0);
+export function GameReader({
+  currentChapter,
+  onNextChapter,
+  onPrevChapter,
+  readingLevel,
+  onOpenMenu,
+}: GameReaderProps) {
+  // Backend scene doc
+  const [sceneDoc, setSceneDoc] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Cursor into sceneDoc.content[]
+  const [contentIndex, setContentIndex] = useState(0);
+
+  // Choice state
   const [showChoice, setShowChoice] = useState(false);
   const [choiceSelected, setChoiceSelected] = useState(false);
   const [selectedChoiceIndex, setSelectedChoiceIndex] = useState<number | null>(null);
+
+  // HUD state
   const [totalPoints, setTotalPoints] = useState(0);
   const [achievements, setAchievements] = useState<string[]>([]);
   const [newAchievement, setNewAchievement] = useState<{ title: string; description: string } | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Beginner helpers
   const [showVocabBank, setShowVocabBank] = useState(false);
 
-  const chapter = fahrenheit451.chapters[currentChapter];
-  const scene = chapter.scenes[currentScene];
-  const currentLine = scene.dialogue[currentDialogue];
-  const isLastDialogue = currentDialogue === scene.dialogue.length - 1;
-  const isLastScene = currentScene === chapter.scenes.length - 1;
+  // Load the scene for the current chapter
+  useEffect(() => {
+    const sceneId = CHAPTER_TO_SCENE_ID[currentChapter];
 
-  // Get text for current reading level
-  const getCurrentText = () => {
-    return currentLine?.text[readingLevel] || '';
+    setLoading(true);
+    setLoadError(null);
+    setSceneDoc(null);
+    setContentIndex(0);
+    setShowChoice(false);
+    setChoiceSelected(false);
+    setSelectedChoiceIndex(null);
+
+    fetchScene(sceneId)
+      .then((doc) => {
+        setSceneDoc(doc);
+      })
+      .catch((err) => {
+        setLoadError(err?.message ?? 'Failed to load scene');
+      })
+      .finally(() => setLoading(false));
+  }, [currentChapter]);
+
+  const item = sceneDoc?.content?.[contentIndex] ?? null;
+
+  const isLastItem = sceneDoc ? contentIndex >= sceneDoc.content.length - 1 : false;
+
+  // If the current item is a choice_point, find its choice object
+  const activeChoice = useMemo(() => {
+    if (!sceneDoc || !item || item.type !== 'choice_point') return null;
+    return sceneDoc.choices?.find((c: any) => c.id === item.ref_id) ?? null;
+  }, [sceneDoc, item]);
+
+  // Simple chapter title fallback (since your Mongo scene has "title")
+  const chapterTitle = sceneDoc?.title ?? `Chapter ${currentChapter + 1}`;
+
+  // Optional background fallback (your Mongo scene JSON currently doesn't have "background")
+  const backgroundSrc =
+    sceneDoc?.background ||
+    // fallback image from current bookData chapter background if it exists
+    fahrenheit451?.chapters?.[currentChapter]?.scenes?.[0]?.background ||
+    'https://images.unsplash.com/photo-1520975958225-3f61f3d5b6f3?auto=format&fit=crop&w=2000&q=80';
+
+  const getText = () => {
+    if (!item) return '';
+    // Mongo scene format has plain "text"
+    return item.text ?? '';
   };
 
-  // Process text to highlight vocabulary words for beginner level
-  const processTextWithVocab = (text: string) => {
-    if (readingLevel !== 'beginner') return text;
-
-    let processedText = text;
-    const wordsFound: Array<{ word: string; index: number }> = [];
-
-    Object.keys(vocabularyBank).forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        wordsFound.push({ word: match[0], index: match.index });
-      }
-    });
-
-    // Sort by index in reverse to replace from end to beginning
-    wordsFound.sort((a, b) => b.index - a.index);
-
-    wordsFound.forEach(({ word, index }) => {
-      const lowerWord = word.toLowerCase();
-      if (vocabularyBank[lowerWord]) {
-        const replacement = vocabularyBank[lowerWord].simplified;
-        processedText = 
-          processedText.substring(0, index) +
-          `<span class="vocab-word" title="${vocabularyBank[lowerWord].definition}">${replacement}</span>` +
-          processedText.substring(index + word.length);
-      }
-    });
-
-    return processedText;
+  // (Optional) keep your old vocab replacement idea, but DON'T inject HTML strings.
+  // For hackathon: just show plain text. (Safe + fast)
+  const renderText = (text: string) => {
+    return text;
   };
 
   useEffect(() => {
-    // Check for achievements
-    if (scene.achievement && !achievements.includes(scene.achievement.id) && currentDialogue === 0) {
-      setAchievements([...achievements, scene.achievement.id]);
-      setNewAchievement({ title: scene.achievement.title, description: scene.achievement.description });
-      setTimeout(() => setNewAchievement(null), 4000);
+    // Hackathon: only show a fake achievement the first time you reach the last item
+    if (sceneDoc && isLastItem && !achievements.includes(sceneDoc.scene_id)) {
+      const id = sceneDoc.scene_id;
+      setAchievements((prev) => [...prev, id]);
+      setNewAchievement({
+        title: 'Scene Complete!',
+        description: `Finished: ${sceneDoc.title ?? id}`,
+      });
+      setTimeout(() => setNewAchievement(null), 2500);
     }
-  }, [scene, currentDialogue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneDoc, isLastItem]);
 
   const handleAdvance = () => {
-    if (choiceSelected && scene.choice) {
-      handleNextScene();
-      return;
-    }
+    if (!sceneDoc || !item) return;
 
-    if (showChoice) {
-      return;
-    }
+    // 1. Move to the next index first
+    if (contentIndex + 1 < sceneDoc.content.length) {
+      const nextIndex = contentIndex + 1;
+      setContentIndex(nextIndex);
 
-    if (!isLastDialogue) {
-      setCurrentDialogue(currentDialogue + 1);
-    } else if (scene.choice && !showChoice) {
-      setShowChoice(true);
-    } else {
-      handleNextScene();
-    }
-  };
-
-  const handleNextScene = () => {
-    if (!isLastScene) {
-      setCurrentScene(currentScene + 1);
-      setCurrentDialogue(0);
-      setShowChoice(false);
-      setChoiceSelected(false);
-      setSelectedChoiceIndex(null);
+      // 2. Peek at the NEXT item: if it's a choice, trigger it immediately
+      if (sceneDoc.content[nextIndex].type === 'choice_point') {
+        setShowChoice(true);
+      }
     } else {
       onNextChapter();
-      setCurrentScene(0);
-      setCurrentDialogue(0);
-      setShowChoice(false);
-      setChoiceSelected(false);
-      setSelectedChoiceIndex(null);
     }
   };
 
   const handleChoice = (index: number, points: number) => {
+    if (!activeChoice) return;
+
+    const opt = activeChoice.options[index];
+
     setSelectedChoiceIndex(index);
     setChoiceSelected(true);
-    setTotalPoints(totalPoints + points);
+    setTotalPoints((p) => p + (points ?? 0));
+
+    // Close choice UI and jump to next_index
+    setShowChoice(false);
+    setChoiceSelected(false);
+    setSelectedChoiceIndex(null);
+
+    // next_index is an index into content[]
+    setContentIndex(opt.next_index);
   };
 
-  const getSpriteImage = (sprite?: string) => {
-    if (!sprite) return null;
-    
-    const spriteMap: { [key: string]: string } = {
-      'firefighter-man': 'firefighter portrait man',
-      'young-woman-happy': 'young woman smiling portrait',
-      'old-man-scared': 'elderly man worried portrait',
-      'wise-man': 'wise elderly man portrait'
-    };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6">
+        Loading scene…
+      </div>
+    );
+  }
 
-    return spriteMap[sprite] || sprite;
-  };
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6 space-y-4">
+        <div className="text-xl font-bold">Couldn’t load scene</div>
+        <div className="text-red-300">{loadError}</div>
+        <div className="text-sm text-gray-300">
+          Check that this scene_id exists in Mongo:
+          <div className="font-mono mt-2 bg-white/10 p-2 rounded">
+            {CHAPTER_TO_SCENE_ID[currentChapter]}
+          </div>
+        </div>
+        <button
+          onClick={onPrevChapter}
+          className="px-4 py-2 bg-white text-black rounded"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
+  if (!sceneDoc || !item) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6">
+        Scene loaded but has no content.
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         <ImageWithFallback
-          src={scene.background}
-          alt={chapter.title}
+          src={backgroundSrc}
+          alt={chapterTitle}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
       </div>
 
       {/* Top HUD */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-">
+      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20">
         <button
           onClick={onOpenMenu}
           className="p-3 bg-white rounded-2xl hover:bg-gray-100 transition-all text-gray-900 border-3 border-gray-900 shadow-lg"
@@ -186,20 +245,14 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
               <BookMarked className="w-6 h-6" />
             </button>
           )}
-          <div className = "p-4"></div>
-          {/* <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-3 bg-white rounded-2xl hover:bg-gray-100 transition-all text-gray-900 border-3 border-gray-900 shadow-lg"
-          >
-            {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
-          </button> */}
+          <div className="p-4" />
         </div>
       </div>
 
       {/* Chapter Title */}
       <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-20">
         <div className="bg-white px-8 py-3 rounded-2xl border-3 border-gray-900 shadow-lg">
-          <h2 className="text-gray-900 font-bold text-xl">{chapter.title}</h2>
+          <h2 className="text-gray-900 font-bold text-xl">{chapterTitle}</h2>
         </div>
       </div>
 
@@ -227,65 +280,34 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
         </div>
       )}
 
-      {/* Character Sprites */}
-      {/* {currentLine?.sprite && ( */}
-        {/* <div className={`absolute bottom-32 z-10 transition-all duration-500 ${ */}
-        {/* //   currentLine.spritePosition === 'left' ? 'left-20' :
-        //   currentLine.spritePosition === 'right' ? 'right-20' :
-        //   'left-1/2 transform -translate-x-1/2'
-        // }`}> */}
-          {/* <div className="relative">
-            <div className="w-64 h-80 bg-gradient-to-b from-transparent to-black/50 rounded-t-full" /> */}
-            {/* Character name tag */}
-            {/* <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-orange-500 px-4 py-1 rounded-full">
-              <span className="text-white font-semibold text-sm">{currentLine.character}</span>
-            </div>
-          </div>
-        </div> */}
-      {/* // )} */}
-
       {/* Dialogue Box */}
       {!showChoice && (
         <div className="absolute bottom-0 left-0 right-0 z-30 p-6">
           <div className="max-w-4xl mx-auto">
-            <div className={`backdrop-blur-md rounded-2xl p-6 border-2 ${
-              currentLine?.thought 
-                ? 'bg-purple-900/90 border-purple-500/50' 
-                : 'bg-black/90 border-orange-500/50'
-            }`}>
-              {currentLine?.character && !currentLine.thought && (
+            <div className="backdrop-blur-md rounded-2xl p-6 border-2 bg-black/90 border-orange-500/50">
+              {item.type === 'dialogue' && item.speaker && (
                 <div className="flex items-center gap-3 mb-3">
                   <div className="px-4 py-1 bg-orange-500 rounded-full">
-                    <span className="text-white font-bold">{currentLine.character}</span>
+                    <span className="text-white font-bold">{item.speaker}</span>
                   </div>
-                  {currentLine.emotion && (
-                    <span className="text-xs text-gray-400 italic">*{currentLine.emotion}*</span>
-                  )}
-                </div>
-              )}
-
-              {currentLine?.thought && (
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span className="text-purple-300 text-sm italic">Thought</span>
                 </div>
               )}
 
               <p className="text-white text-xl leading-relaxed mb-4 reading-text">
-                {getCurrentText()}
+                {renderText(getText())}
               </p>
 
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-400">
-                  {currentDialogue + 1} / {scene.dialogue.length}
+                  {contentIndex + 1} / {sceneDoc.content.length}
                 </div>
-                
+
                 <button
                   onClick={handleAdvance}
                   className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all transform hover:scale-105"
                 >
                   <span className="font-semibold">
-                    {isLastDialogue && scene.choice ? 'Make a Choice' : isLastDialogue ? 'Continue' : 'Next'}
+                    {isLastItem ? 'Next Chapter' : 'Next'}
                   </span>
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -296,20 +318,20 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
       )}
 
       {/* Interactive Choice */}
-      {showChoice && scene.choice && (
+      {showChoice && activeChoice && (
         <InteractiveChoice
           choice={{
-            prompt: scene.choice.prompt[readingLevel],
-            options: scene.choice.options.map(opt => ({
+            prompt: 'Choose:',
+            options: activeChoice.options.map((opt: any) => ({
               text: opt.text,
-              feedback: opt.feedback[readingLevel],
-              points: opt.points
-            }))
+              feedback: '', // keep empty for hackathon
+              points: opt.points ?? 0,
+            })),
           }}
           onSelect={handleChoice}
           selectedIndex={selectedChoiceIndex}
           choiceSelected={choiceSelected}
-          onContinue={handleAdvance}
+          onContinue={() => setShowChoice(false)}
         />
       )}
 
@@ -321,14 +343,6 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
         />
       )}
 
-      {/* Progress indicator */}
-      <div className="absolute bottom-6 left-6 z-20">
-        <div className="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
-          <div className="text-white text-sm">
-            Scene {currentScene + 1} / {chapter.scenes.length}
-          </div>
-        </div>
-      </div>
 
       {/* Reading Level Indicator */}
       <div className="absolute bottom-6 right-6 z-20">
