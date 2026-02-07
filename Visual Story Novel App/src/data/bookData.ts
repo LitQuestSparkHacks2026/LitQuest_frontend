@@ -187,7 +187,7 @@ export const fahrenheit451: Book = {
         {
           id: 'ch1_scene2',
           sceneNumber: 2,
-          background: 'flame thrower fire night',
+          background: '/src/pictures/67ac593a74547f001d6a6a7f.png',
           dialogue: [
             {
               character: 'Montag',
