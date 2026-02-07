@@ -26,8 +26,29 @@
           Usage: Appears when GameReader encounters a choice_point.
           
           Features: Displays options (A, B, C...), handles point scoring, and provides immediate feedback text upon selection.
+          
     
-        > 
+        > StoryReader.tsx (Enhanced Book Mode)
+        
+            Style: Traditional text with interactive enhancements.
+            
+            Key Features:
+            
+            Sectioned Reading: Breaks chapters into digestible chunks with accompanying imagery.
+            
+            Context Panels: A "What's Happening Here?" sidebar that translates complex literary scenes into simple summaries based on the user's readingLevel.
+            
+            Interactive Text: Users can click specific words (like "pleasure" or "burning") to reveal hidden hints or thematic notes.
+            
+            Integrated Quizzes: Automatically triggers an InteractiveQuiz at the end of beginner sections.
+            
+            Audio Toggle: Includes controls for sound effects/narration.
+
+        > ReadingLevelSelector.tsx
+          A modal that lets users choose between "Middle School" (Beginner), "High School" (Intermediate), or "Adult" (Advanced) levels. This choice globally changes the text complexity in other components.
+
+        > Library.tsx
+          The main dashboard or "landing page" displaying a grid of available books (locked or ready) with their metadata.
 
     > Data folder
 
