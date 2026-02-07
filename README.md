@@ -36,7 +36,7 @@ With that, you're ready to *Clone the Repo*.
 Cloning the repository simply means copying all the files into a local folder of your choosing. To start, copy this repository's link:
 
 ```bash
-https://github.com/OfficialOutdoorZy/frontend.git
+https://github.com/SparkHacks2026/frontend.git
 ```
 
 And then run the following command in your terminal:
