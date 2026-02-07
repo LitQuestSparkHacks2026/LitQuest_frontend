@@ -2,7 +2,11 @@
 
 # Description
 
-    > In an era where social media scrolling often replaces reading, LitQuest changes classic literature by transforming timeless stories into gamified visual novels. Designed to make reading accessible to everyone, our platform features adaptive vocabulary levels that adjust to the user's reading proficiency. By breaking down novels into digestible segments and incorporating comprehension checkpoints, LitQuest engages with a wider audience and ensures that classic ideas are available to all readers of any background.
+    > In an era where social media scrolling often replaces reading, LitQuest changes classic literature 
+    > by transforming timeless stories into gamified visual novels. Designed to make reading accessible to everyone, 
+    > our platform features adaptive vocabulary levels that adjust to the user's reading proficiency. By breaking 
+    > down novels into digestible segments and incorporating comprehension checkpoints, LitQuest engages with a wider 
+    > audience and ensures that classic ideas are available to all readers of any background.
 
 #Figma Frontend Links
 
@@ -13,8 +17,8 @@
 # Instructions
 
     > Navigate to the "Visual Novel Story App" directory through the terminal
-    > The application requires ```npm install```
-    > Afterwards, use the ```npm run dev``` command
+    > The application requires npm install
+    > Afterwards, use the npm run dev command
 
 # File Outline
     
