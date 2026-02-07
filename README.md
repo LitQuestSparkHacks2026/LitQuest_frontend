@@ -63,6 +63,27 @@
         Features: functions to handle the book, level, and chapter selected. Functions to handle how these components interact with each other.
 
     > API.ts
+        Purpose: Manages external data fetching and server communication.
+
+        Key Features:
+        
+        Environment-Aware Configuration:
+        
+        It defines the API_BASE URL dynamically. It checks for a Vite environment variable (VITE_API_BASE) first.
+        
+        Fallback: If no environment variable is found (e.g., during local development), it defaults to http://localhost:5001.
+        
+        Scene Fetching (fetchScene):
+        
+        Input: Accepts a unique sceneId (string).
+        
+        Operation: Sends a standard HTTP GET request to /api/scenes/{sceneId}.
+        
+        Error Handling: Includes a guard clause that throws an explicit error ("Failed to load...") if the server response is not "OK" (e.g., 404 or 500 errors).
+        
+        Output: Returns the raw JSON data for the scene (dialogue, choices, backgrounds) to be used by the game engine
+
+        
         
             
 
