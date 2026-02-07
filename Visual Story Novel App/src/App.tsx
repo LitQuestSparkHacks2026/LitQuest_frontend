@@ -72,8 +72,9 @@ export default function App() {
   };
 
   const CHAPTER_TO_SCENE_ID: Record<number, string> = {
-    0: "01-sidewalk-complete",
-    1: "04-OldWomanHouse-complete",
+    0: '01-sidewalk-complete',
+    1: '03-firehouse-complete',
+    2: "04-OldWomanHouse-complete",
   };
 
   return (
