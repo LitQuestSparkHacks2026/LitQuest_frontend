@@ -84,6 +84,13 @@
         
         Output: Returns the raw JSON data for the scene (dialogue, choices, backgrounds) to be used by the game engine
 
+    > Main.tsx
+        Creates a React root at that DOM element.
+        
+        Finds the HTML element with id="root"
+
+        Renders the App component into the created root element
+
         
         
             
