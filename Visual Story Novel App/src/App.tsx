@@ -71,6 +71,11 @@ export default function App() {
     setCurrentChapter(0);
   };
 
+  const CHAPTER_TO_SCENE_ID: Record<number, string> = {
+    0: "01-sidewalk-complete",
+    1: "04-OldWomanHouse-complete",
+  };
+
   return (
     <div className="min-h-screen bg-black">
       {/* Library View */}
