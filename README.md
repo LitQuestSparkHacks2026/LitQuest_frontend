@@ -1,7 +1,7 @@
 # Welcome to the SparkHacks2026 frontend!
 # Outline
 
-    > The application requires npm run dev to run.
+    > The application requires npm install followed by npm run dev to run while inside the Visual Novel Story App directory.
     
     > Components folder
     
