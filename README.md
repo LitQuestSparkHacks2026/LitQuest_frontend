@@ -29,7 +29,14 @@
     
         > 
 
+    > Data folder
 
+        > bookData.ts
+            Contains the chapters, scenes, backgrounds, dialogue of each book in the application.
+
+            Features: Library catalog for each book, vocabulary bank, dialogue for each level (beginner, intermediate, advanced), character sprites.
+        
+            
 
 
 
