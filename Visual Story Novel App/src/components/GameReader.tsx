@@ -148,15 +148,15 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
       {/* Background Image */}
       <div className="absolute inset-0">
         <ImageWithFallback
-          src={`https://images.unsplash.com/photo-1?q=80&w=1920`}
-          alt={scene.background}
+          src={scene.background}
+          alt={chapter.title}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
       </div>
 
       {/* Top HUD */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20">
+      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-">
         <button
           onClick={onOpenMenu}
           className="p-3 bg-white rounded-2xl hover:bg-gray-100 transition-all text-gray-900 border-3 border-gray-900 shadow-lg"
@@ -186,12 +186,13 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
               <BookMarked className="w-6 h-6" />
             </button>
           )}
-          <button
+          <div className = "p-4"></div>
+          {/* <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className="p-3 bg-white rounded-2xl hover:bg-gray-100 transition-all text-gray-900 border-3 border-gray-900 shadow-lg"
           >
             {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -227,21 +228,21 @@ export function GameReader({ currentChapter, onNextChapter, onPrevChapter, readi
       )}
 
       {/* Character Sprites */}
-      {currentLine?.sprite && (
-        <div className={`absolute bottom-32 z-10 transition-all duration-500 ${
-          currentLine.spritePosition === 'left' ? 'left-20' :
-          currentLine.spritePosition === 'right' ? 'right-20' :
-          'left-1/2 transform -translate-x-1/2'
-        }`}>
-          <div className="relative">
-            <div className="w-64 h-80 bg-gradient-to-b from-transparent to-black/50 rounded-t-full" />
+      {/* {currentLine?.sprite && ( */}
+        {/* <div className={`absolute bottom-32 z-10 transition-all duration-500 ${ */}
+        {/* //   currentLine.spritePosition === 'left' ? 'left-20' :
+        //   currentLine.spritePosition === 'right' ? 'right-20' :
+        //   'left-1/2 transform -translate-x-1/2'
+        // }`}> */}
+          {/* <div className="relative">
+            <div className="w-64 h-80 bg-gradient-to-b from-transparent to-black/50 rounded-t-full" /> */}
             {/* Character name tag */}
-            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-orange-500 px-4 py-1 rounded-full">
+            {/* <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-orange-500 px-4 py-1 rounded-full">
               <span className="text-white font-semibold text-sm">{currentLine.character}</span>
             </div>
           </div>
-        </div>
-      )}
+        </div> */}
+      {/* // )} */}
 
       {/* Dialogue Box */}
       {!showChoice && (

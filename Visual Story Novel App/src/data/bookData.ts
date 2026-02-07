@@ -1,5 +1,6 @@
 // MongoDB-ready structure for book content
 // This structure can be directly imported into MongoDB collections
+// import backgroundImage1 from '../pictures/il_fullxfull.1537622781_49kp.jpg';
 
 export interface VocabularyEntry {
   word: string;
@@ -143,7 +144,7 @@ export const fahrenheit451: Book = {
         {
           id: 'ch1_scene1',
           sceneNumber: 1,
-          background: 'dark city night fire burning',
+          background: '/src/pictures/il_fullxfull.1537622781_49kp.jpg',
           dialogue: [
             {
               character: 'Narrator',
