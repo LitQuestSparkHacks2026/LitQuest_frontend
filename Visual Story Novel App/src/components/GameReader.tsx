@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Sparkles, Award, Menu as MenuIcon, BookMarked } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Sparkles, Award, Menu as MenuIcon, BookMarked, History } from 'lucide-react'; // Added History & ChevronLeft
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ReadingLevel } from '../App';
 import { InteractiveChoice } from './InteractiveChoice';
 import { AchievementNotification } from './AchievementNotification';
+import { ChatLog, ChatLogButton, DialogueEntry } from './chatlog/ChatLogModule'; // Added Imports
 import { fahrenheit451 } from '../data/bookData';
 import { fetchScene } from '../api';
 
@@ -15,18 +16,13 @@ interface GameReaderProps {
   onOpenMenu: () => void;
 }
 
-/**
- * Hackathon-simple mapping:
- * chapter index -> Mongo scene_id
- * Update these strings to match what you inserted into Mongo.
- */
 const CHAPTER_TO_SCENE_ID: Record<number, string> = {
   0: '01-sidewalk-complete',
   1: '03-firehouse-complete',
   2: "04-OldWomanHouse-complete",
 };
 
-// Create vocabulary bank from local data (keep this feature working)
+// Create vocabulary bank from local data
 const vocabularyBank: { [key: string]: { definition: string; simplified: string } } = {};
 fahrenheit451.vocabulary.forEach((entry) => {
   vocabularyBank[String(entry.word).toLowerCase()] = {
@@ -63,6 +59,10 @@ export function GameReader({
   // Beginner helpers
   const [showVocabBank, setShowVocabBank] = useState(false);
 
+  // --- NEW: History & Chat Log State ---
+  const [dialogueHistory, setDialogueHistory] = useState<DialogueEntry[]>([]);
+  const [showChatLog, setShowChatLog] = useState(false);
+
   // Load the scene for the current chapter
   useEffect(() => {
     const sceneId = CHAPTER_TO_SCENE_ID[currentChapter];
@@ -74,6 +74,8 @@ export function GameReader({
     setShowChoice(false);
     setChoiceSelected(false);
     setSelectedChoiceIndex(null);
+    // Clear history when changing chapters (optional, remove if you want persistent history)
+    setDialogueHistory([]); 
 
     fetchScene(sceneId)
       .then((doc) => {
@@ -86,8 +88,36 @@ export function GameReader({
   }, [currentChapter]);
 
   const item = sceneDoc?.content?.[contentIndex] ?? null;
-
   const isLastItem = sceneDoc ? contentIndex >= sceneDoc.content.length - 1 : false;
+
+  // --- NEW: Record History Effect ---
+  // Runs every time 'item' changes to save it to the log
+  useEffect(() => {
+    if (!sceneDoc || !item) return;
+    if (item.type === 'choice_point') return; // Don't log choice points
+
+    // Normalize text so ChatLog doesn't crash if API returns a string
+    const normalizedText = typeof item.text === 'string' 
+      ? { beginner: item.text, intermediate: item.text, advanced: item.text }
+      : item.text;
+
+    const entry: DialogueEntry = {
+      character: item.speaker || 'Narrator',
+      text: normalizedText,
+      sceneNumber: currentChapter,
+      dialogueNumber: contentIndex,
+      timestamp: new Date(),
+      thought: item.type === 'thought' // Assuming you might have thought types
+    };
+      
+    setDialogueHistory(prev => {
+      // Prevent duplicates
+      const exists = prev.some(e => 
+        e.sceneNumber === currentChapter && e.dialogueNumber === contentIndex
+      );
+      return exists ? prev : [...prev, entry];
+    });
+  }, [contentIndex, sceneDoc, currentChapter, item]);
 
   // If the current item is a choice_point, find its choice object
   const activeChoice = useMemo(() => {
@@ -95,33 +125,42 @@ export function GameReader({
     return sceneDoc.choices?.find((c: any) => c.id === item.ref_id) ?? null;
   }, [sceneDoc, item]);
 
-  // Simple chapter title fallback (since your Mongo scene has "title")
   const chapterTitle = sceneDoc?.title ?? `Chapter ${currentChapter + 1}`;
 
-  // Optional background fallback (your Mongo scene JSON currently doesn't have "background")
   const backgroundSrc =
     sceneDoc?.background ||
-    // fallback image from current bookData chapter background if it exists
     fahrenheit451?.chapters?.[currentChapter]?.scenes?.[0]?.background ||
     'https://images.unsplash.com/photo-1520975958225-3f61f3d5b6f3?auto=format&fit=crop&w=2000&q=80';
 
   const getText = () => {
     if (!item) return '';
     const t = item.text;
-    if (typeof t === 'string') return t;         // supports old scenes
+    if (typeof t === 'string') return t;
     return t?.[readingLevel] ?? '';
   };
 
-
-
-  // (Optional) keep your old vocab replacement idea, but DON'T inject HTML strings.
-  // For hackathon: just show plain text. (Safe + fast)
   const renderText = (text: string) => {
     return text;
   };
 
+  // --- NEW: Handlers for Back & Jump ---
+  const handleGoBack = () => {
+    if (contentIndex > 0) {
+      setContentIndex(contentIndex - 1);
+    }
+  };
+
+  const handleJumpToDialogue = (chapterIndex: number, index: number) => {
+    // Only jump if it's in the current chapter
+    if (chapterIndex === currentChapter) {
+      setContentIndex(index);
+      setShowChatLog(false);
+      setShowChoice(false);
+    }
+  };
+
+  // Achievement check
   useEffect(() => {
-    // Hackathon: only show a fake achievement the first time you reach the last item
     if (sceneDoc && isLastItem && !achievements.includes(sceneDoc.scene_id)) {
       const id = sceneDoc.scene_id;
       setAchievements((prev) => [...prev, id]);
@@ -131,18 +170,15 @@ export function GameReader({
       });
       setTimeout(() => setNewAchievement(null), 2500);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneDoc, isLastItem]);
 
   const handleAdvance = () => {
     if (!sceneDoc || !item) return;
 
-    // 1. Move to the next index first
     if (contentIndex + 1 < sceneDoc.content.length) {
       const nextIndex = contentIndex + 1;
       setContentIndex(nextIndex);
 
-      // 2. Peek at the NEXT item: if it's a choice, trigger it immediately
       if (sceneDoc.content[nextIndex].type === 'choice_point') {
         setShowChoice(true);
       }
@@ -152,56 +188,36 @@ export function GameReader({
   };
 
   const handleChoice = (index: number, points: number) => {
-  if (!activeChoice || !sceneDoc) return;
+    if (!activeChoice || !sceneDoc) return;
 
-  const opt = activeChoice.options[index];
+    const opt = activeChoice.options[index];
 
-  setSelectedChoiceIndex(index);
-  setTotalPoints((p) => p + (points ?? 0));
+    setSelectedChoiceIndex(index);
+    setTotalPoints((p) => p + (points ?? 0));
 
-  // close choice UI
-  setShowChoice(false);
-  setChoiceSelected(false);
-  setSelectedChoiceIndex(null);
+    setShowChoice(false);
+    setChoiceSelected(false);
+    setSelectedChoiceIndex(null);
 
-  // next_index should be a number (guard for string / undefined)
-  const jump = Number(opt.next_index);
+    const jump = Number(opt.next_index);
 
-  if (!Number.isInteger(jump) || jump < 0 || jump >= sceneDoc.content.length) {
-    console.warn(
-      "Invalid next_index:",
-      opt.next_index,
-      "content length:",
-      sceneDoc.content.length
-    );
-
-    // fallback: go to the line right after the current choice_point
-    const fallback = Math.min(contentIndex + 1, sceneDoc.content.length - 1);
-    setContentIndex(fallback);
-
-    // if fallback lands on choice_point, open it
-    if (sceneDoc.content[fallback]?.type === "choice_point") {
-      setShowChoice(true);
+    if (!Number.isInteger(jump) || jump < 0 || jump >= sceneDoc.content.length) {
+      const fallback = Math.min(contentIndex + 1, sceneDoc.content.length - 1);
+      setContentIndex(fallback);
+      if (sceneDoc.content[fallback]?.type === "choice_point") {
+        setShowChoice(true);
+      }
+      return;
     }
 
-    return;
-  }
-
-  setContentIndex(jump);
-
-  // if jump lands on a choice_point, open it immediately
-  if (sceneDoc.content[jump]?.type === "choice_point") {
-    setShowChoice(true);
-  }
-};
-
+    setContentIndex(jump);
+    if (sceneDoc.content[jump]?.type === "choice_point") {
+      setShowChoice(true);
+    }
+  };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white p-6">
-        Loading scene…
-      </div>
-    );
+    return <div className="min-h-screen bg-black text-white p-6">Loading scene…</div>;
   }
 
   if (loadError) {
@@ -209,28 +225,13 @@ export function GameReader({
       <div className="min-h-screen bg-black text-white p-6 space-y-4">
         <div className="text-xl font-bold">Couldn’t load scene</div>
         <div className="text-red-300">{loadError}</div>
-        <div className="text-sm text-gray-300">
-          Check that this scene_id exists in Mongo:
-          <div className="font-mono mt-2 bg-white/10 p-2 rounded">
-            {CHAPTER_TO_SCENE_ID[currentChapter]}
-          </div>
-        </div>
-        <button
-          onClick={onPrevChapter}
-          className="px-4 py-2 bg-white text-black rounded"
-        >
-          Go Back
-        </button>
+        <button onClick={onPrevChapter} className="px-4 py-2 bg-white text-black rounded">Go Back</button>
       </div>
     );
   }
 
   if (!sceneDoc || !item) {
-    return (
-      <div className="min-h-screen bg-black text-white p-6">
-        Scene loaded but has no content.
-      </div>
-    );
+    return <div className="min-h-screen bg-black text-white p-6">Scene loaded but has no content.</div>;
   }
 
   return (
@@ -292,12 +293,7 @@ export function GameReader({
         <div className="absolute top-32 right-6 z-50 bg-black/90 backdrop-blur-md rounded-xl p-6 border-2 border-purple-500/50 max-w-sm shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-bold text-lg">📚 Vocabulary Helper</h3>
-            <button
-              onClick={() => setShowVocabBank(false)}
-              className="text-white hover:text-gray-300 text-2xl"
-            >
-              ✕
-            </button>
+            <button onClick={() => setShowVocabBank(false)} className="text-white hover:text-gray-300 text-2xl">✕</button>
           </div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {Object.entries(vocabularyBank).map(([word, { definition, simplified }]) => (
@@ -311,7 +307,7 @@ export function GameReader({
         </div>
       )}
 
-      {/* Dialogue Box */}
+      Dialogue Box
       {!showChoice && (
         <div className="absolute bottom-0 left-0 right-0 z-30 p-6">
           <div className="max-w-4xl mx-auto">
@@ -328,14 +324,43 @@ export function GameReader({
                 {renderText(getText())}
               </p>
 
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-400">
-                  {contentIndex + 1} / {sceneDoc.content.length}
+             {/* CONTROLS: Back, History, and Next */}
+              <div className="flex items-center justify-between relative z-50">
+                
+                {/* Left Group: Back & History */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleGoBack}
+                    disabled={contentIndex === 0}
+                    // FIXED: Added 'transform hover:scale-105 active:scale-95' for clicky feel
+                    className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all border-2 shadow-lg ${
+                      contentIndex === 0 
+                        ? 'bg-gray-800 border-gray-800 text-gray-600 cursor-not-allowed'
+                        : 'bg-gray-700 hover:bg-gray-600 border-gray-900 text-white transform hover:scale-105 active:scale-95'
+                    }`}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                    <span className="font-semibold text-sm hidden sm:inline">Back</span>
+                  </button>
+
+                  <ChatLogButton 
+                    onClick={() => setShowChatLog(true)}
+                    hasHistory={dialogueHistory.length > 0}
+                    // count={dialogueHistory.length}
+                  />
+
+                  <div className="text-sm text-gray-400 ml-2 hidden sm:block">
+                    {contentIndex + 1} / {sceneDoc.content.length}
+                  </div>
                 </div>
 
+                {/* Right Group: Next Button */}
                 <button
                   onClick={handleAdvance}
-                  className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all transform hover:scale-105"
+                  // FIXED: Changed rounded-lg to rounded-xl
+                  // FIXED: Added border-2 border-orange-900/50 to match the 'tactile' feel of the Back button
+                  // FIXED: Added shadow-lg
+                  className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all transform hover:scale-105 active:scale-95 border-2 border-orange-600 shadow-lg shadow-orange-500/20"
                 >
                   <span className="font-semibold">
                     {isLastItem ? 'Next Chapter' : 'Next'}
@@ -374,7 +399,6 @@ export function GameReader({
         />
       )}
 
-
       {/* Reading Level Indicator */}
       <div className="absolute bottom-6 right-6 z-20">
         <div className="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
@@ -383,6 +407,18 @@ export function GameReader({
           </div>
         </div>
       </div>
+
+      {/* --- NEW: Chat Log Modal --- */}
+      {showChatLog && (
+        <ChatLog
+          dialogueHistory={dialogueHistory}
+          readingLevel={readingLevel}
+          currentSceneIndex={currentChapter}
+          currentDialogueIndex={contentIndex}
+          onClose={() => setShowChatLog(false)}
+          onJumpToDialogue={handleJumpToDialogue}
+        />
+      )}
     </div>
   );
 }

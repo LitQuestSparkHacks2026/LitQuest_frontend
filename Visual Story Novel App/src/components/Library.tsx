@@ -1,6 +1,7 @@
 import { Book, Lock, Play, Sparkles } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { libraryBooks } from '../data/bookData';
+import logo from '../pictures/icon.svg';
 
 interface LibraryProps {
   onSelectBook: (bookId: string) => void;
@@ -14,7 +15,7 @@ export function Library({ onSelectBook }: LibraryProps) {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center gap-4">
             <div className="p-4 bg-orange-500 rounded-2xl">
-              <Book className="w-10 h-10 text-white" />
+              <img src={logo} alt="LitQuest Logo" className="w-10 h-10" />
             </div>
             <div>
               <h1 className="text-4xl font-bold text-gray-900">LitQuest</h1>
