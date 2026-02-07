@@ -94,7 +94,7 @@ export default function App() {
       )}
 
       {/* Game View */}
-      {currentView === 'game' && !showLevelSelector && !showGameMenu && (
+      {currentView === 'game' && (
         <GameReader
           key={sceneKey}
           currentChapter={currentChapter}
