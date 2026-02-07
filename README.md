@@ -63,6 +63,7 @@
         Features: functions to handle the book, level, and chapter selected. Functions to handle how these components interact with each other.
 
     > API.ts
+    
         Purpose: Manages external data fetching and server communication.
 
         Key Features:
