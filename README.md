@@ -1,12 +1,6 @@
 # Welcome to the SparkHacks2026 frontend!
 # Getting Started Guide
 
-## Installing NodeJS
-
-The first step you'll need to do is install [NodeJS **Version 24.3.0**](https://nodejs.org/en/download).
-
-Once you open the installer, follow all of the steps as shown. You don't need to add anything extra, it should work just fine.
-
 ## Setting up Git
 
 Before we do anything, we need to make sure you have git installed and ready to go. To start, open your **command line**. Then, simply enter:
