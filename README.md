@@ -1,7 +1,22 @@
-# Welcome to the SparkHacks2026 frontend!
-# Outline
+# Welcome to the LitQuest SparkHacks2026 frontend!
 
-    > The application requires npm install followed by npm run dev to run while inside the "Visual Novel Story App" directory.
+# Description
+
+    > In an era where social media scrolling often replaces reading, LitQuest changes classic literature by transforming timeless stories into gamified visual novels. Designed to make reading accessible to everyone, our platform features adaptive vocabulary levels that adjust to the user's reading proficiency. By breaking down novels into digestible segments and incorporating comprehension checkpoints, LitQuest engages with a wider audience and ensures that classic ideas are available to all readers of any background.
+
+#Figma Frontend Links
+
+    > Figma App Prototype Frontend: https://www.figma.com/proto/a1xWlER3tbEa1ohaL5Carj/LitQuest-SparkHacks?node-id=34-1763&p=f&t=vcKZL0OlZF5iaUcV-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=18%3A45
+
+    > Figma App Prototype Wireframe: https://www.figma.com/design/a1xWlER3tbEa1ohaL5Carj/LitQuest-SparkHacks?node-id=0-1&t=8tD9yo78ukXm16iQ-1
+
+# Instructions
+
+    > Navigate to the "Visual Novel Story App" directory through the terminal
+    > The application requires ```npm install```
+    > Afterwards, use the ```npm run dev``` command
+
+# File Outline
     
     > Components folder
     
