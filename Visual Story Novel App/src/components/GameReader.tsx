@@ -22,7 +22,8 @@ interface GameReaderProps {
  */
 const CHAPTER_TO_SCENE_ID: Record<number, string> = {
   0: '01-sidewalk-complete',
-  1: "04-OldWomanHouse-complete",
+  1: '03-firehouse-complete',
+  2: "04-OldWomanHouse-complete",
 };
 
 // Create vocabulary bank from local data (keep this feature working)
@@ -106,9 +107,12 @@ export function GameReader({
 
   const getText = () => {
     if (!item) return '';
-    // Mongo scene format has plain "text"
-    return item.text ?? '';
+    const t = item.text;
+    if (typeof t === 'string') return t;         // supports old scenes
+    return t?.[readingLevel] ?? '';
   };
+
+
 
   // (Optional) keep your old vocab replacement idea, but DON'T inject HTML strings.
   // For hackathon: just show plain text. (Safe + fast)
@@ -148,22 +152,49 @@ export function GameReader({
   };
 
   const handleChoice = (index: number, points: number) => {
-    if (!activeChoice) return;
+  if (!activeChoice || !sceneDoc) return;
 
-    const opt = activeChoice.options[index];
+  const opt = activeChoice.options[index];
 
-    setSelectedChoiceIndex(index);
-    setChoiceSelected(true);
-    setTotalPoints((p) => p + (points ?? 0));
+  setSelectedChoiceIndex(index);
+  setTotalPoints((p) => p + (points ?? 0));
 
-    // Close choice UI and jump to next_index
-    setShowChoice(false);
-    setChoiceSelected(false);
-    setSelectedChoiceIndex(null);
+  // close choice UI
+  setShowChoice(false);
+  setChoiceSelected(false);
+  setSelectedChoiceIndex(null);
 
-    // next_index is an index into content[]
-    setContentIndex(opt.next_index);
-  };
+  // next_index should be a number (guard for string / undefined)
+  const jump = Number(opt.next_index);
+
+  if (!Number.isInteger(jump) || jump < 0 || jump >= sceneDoc.content.length) {
+    console.warn(
+      "Invalid next_index:",
+      opt.next_index,
+      "content length:",
+      sceneDoc.content.length
+    );
+
+    // fallback: go to the line right after the current choice_point
+    const fallback = Math.min(contentIndex + 1, sceneDoc.content.length - 1);
+    setContentIndex(fallback);
+
+    // if fallback lands on choice_point, open it
+    if (sceneDoc.content[fallback]?.type === "choice_point") {
+      setShowChoice(true);
+    }
+
+    return;
+  }
+
+  setContentIndex(jump);
+
+  // if jump lands on a choice_point, open it immediately
+  if (sceneDoc.content[jump]?.type === "choice_point") {
+    setShowChoice(true);
+  }
+};
+
 
   if (loading) {
     return (
@@ -321,10 +352,10 @@ export function GameReader({
       {showChoice && activeChoice && (
         <InteractiveChoice
           choice={{
-            prompt: 'Choose:',
+            prompt: activeChoice.choice_prompt?.[readingLevel] ?? 'Choose:',
             options: activeChoice.options.map((opt: any) => ({
-              text: opt.text,
-              feedback: '', // keep empty for hackathon
+              text: typeof opt.text === 'string' ? opt.text : (opt.text?.[readingLevel] ?? ''),
+              feedback: '',
               points: opt.points ?? 0,
             })),
           }}
