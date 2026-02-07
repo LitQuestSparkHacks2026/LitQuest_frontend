@@ -8,6 +8,65 @@ import { ChatLog, ChatLogButton, DialogueEntry } from './chatlog/ChatLogModule';
 import { fahrenheit451 } from '../data/bookData';
 import { fetchScene } from '../api';
 
+import clarisseSmile from '../pictures/clarisseSmile.png';
+import clarisseHappy from '../pictures/clarisseHappy.png';
+import clarisseNeutralHeadUp from '../pictures/clarisseNeutralHeadUp.png';
+import clarisseThink from '../pictures/clarisseThink.png';
+
+import montagSkeptic from '../pictures/montagSkeptic.png';
+import montagSmile from '../pictures/montagSmile.png';
+import montagTalkExplain from '../pictures/montagTalkExplain.png';
+
+import oldWoman from '../pictures/oldWoman.png';
+
+type SpriteKey =
+  | 'clarisseSmile'
+  | 'clarisseHappy'
+  | 'clarisseNeutralHeadUp'
+  | 'clarisseThink'
+  | 'montagSkeptic'
+  | 'montagSmile'
+  | 'montagTalkExplain'
+  | 'oldWoman';
+
+const SPRITES: Record<SpriteKey, string> = {
+  clarisseSmile,
+  clarisseHappy,
+  clarisseNeutralHeadUp,
+  clarisseThink,
+  montagSkeptic,
+  montagSmile,
+  montagTalkExplain,
+  oldWoman,
+};
+
+// Optional: auto-side placement
+const getSpriteSide = (speaker?: string): 'left' | 'right' => {
+  const s = (speaker ?? '').toLowerCase();
+  if (s.includes('montag')) return 'left';
+  return 'right';
+};
+
+// 1) If JSON has item.sprite, use it.
+// 2) Else choose a default based on speaker.
+const getSpriteForItem = (item: any): string | null => {
+  if (!item) return null;
+
+  // If you later add: { "sprite": "clarisseThink" } etc.
+  const spriteKey = item.sprite as SpriteKey | undefined;
+  if (spriteKey && SPRITES[spriteKey]) return SPRITES[spriteKey];
+
+  const speaker = String(item.speaker ?? '').toLowerCase();
+
+  if (speaker.includes('clarisse')) return SPRITES.clarisseNeutralHeadUp;
+  if (speaker.includes('montag')) return SPRITES.montagTalkExplain;
+  if (speaker.includes('old woman')) return SPRITES.oldWoman;
+
+  // If you don’t have a Beatty sprite yet, return null (no sprite shown)
+  return null;
+};
+
+
 interface GameReaderProps {
   currentChapter: number;
   onNextChapter: () => void;
@@ -89,6 +148,8 @@ export function GameReader({
 
   const item = sceneDoc?.content?.[contentIndex] ?? null;
   const isLastItem = sceneDoc ? contentIndex >= sceneDoc.content.length - 1 : false;
+
+  const spriteSrc = getSpriteForItem(item);
 
   // --- NEW: Record History Effect ---
   // Runs every time 'item' changes to save it to the log
@@ -237,7 +298,7 @@ export function GameReader({
   return (
     <div className="fixed inset-0 overflow-hidden">
       {/* Background Image */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 z-0">
         <ImageWithFallback
           src={backgroundSrc}
           alt={chapterTitle}
@@ -245,6 +306,29 @@ export function GameReader({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
       </div>
+
+      {/* SPRITE LAYER (behind dialogue box, above background) */}
+      {spriteSrc && !showChoice && (
+      <div className="absolute inset-0 z-10 pointer-events-none flex items-end justify-center">
+        <img
+          src={spriteSrc}
+          alt={item?.speaker ?? 'Character'}
+          className="
+            h-[70vh]
+            max-h-[480px]
+            w-auto
+            object-contain
+            drop-shadow-2xl
+            translate-y-[-40px]
+          "
+        />
+      </div>
+    )}
+
+
+
+
+      
 
       {/* Top HUD */}
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20">
@@ -306,8 +390,7 @@ export function GameReader({
           </div>
         </div>
       )}
-
-      Dialogue Box
+      {/* Dialogue Box */}
       {!showChoice && (
         <div className="absolute bottom-0 left-0 right-0 z-30 p-6">
           <div className="max-w-4xl mx-auto">
